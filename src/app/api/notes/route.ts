@@ -121,12 +121,3 @@ export async function HEAD(req: NextRequest) {
   }
   return NextResponse.json({ ip: userIp });
 }
-
-export async function GET_MYIP(req: NextRequest) {
-
-  let userIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  if (!userIp) {
-    userIp = req.headers.get("x-real-ip") || "unknown";
-  }
-  return NextResponse.json({ ip: userIp });
-}
