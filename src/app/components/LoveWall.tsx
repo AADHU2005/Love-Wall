@@ -6,42 +6,7 @@ interface Note {
   text: string;
   likes: number;
   imageUrl?: string;
-  senderIp?: string;
   createdAt?: string;
-}
-
-function LoveWallPreloader() {
-  return (
-    <div className="flex justify-center py-8">
-      <svg width="48" height="48" viewBox="0 0 80 80" className="drop-shadow-lg animate-spin-slow">
-        <path
-          d="M40 70s-24-14.7-24-34.2C16 22.6 27.2 14 40 26.5 52.8 14 64 22.6 64 35.8 64 55.3 40 70 40 70z"
-          fill="none"
-          stroke="#f472b6"
-          strokeWidth="4"
-          strokeLinejoin="round"
-          strokeDasharray="180"
-          strokeDashoffset="90"
-          style={{
-            animation: 'drawHeart 1.2s linear infinite',
-            filter: 'drop-shadow(0 2px 8px #f472b6)'
-          }}
-        />
-        <style>{`
-          @keyframes drawHeart {
-            0% { stroke-dashoffset: 180; }
-            100% { stroke-dashoffset: 0; }
-          }
-          .animate-spin-slow {
-            animation: spin 1.2s linear infinite;
-          }
-          @keyframes spin {
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </svg>
-    </div>
-  );
 }
 
 export default function LoveWall() {
@@ -51,23 +16,14 @@ export default function LoveWall() {
   const [loading, setLoading] = useState(false);
   const [modalImg, setModalImg] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [userIp, setUserIp] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [likedId, setLikedId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<'recent' | 'popular'>('recent');
 
   useEffect(() => {
-    setInitialLoading(true);
-    fetchNotes().then(() => setInitialLoading(false));
-    // Fetch user's IP from backend (so it matches what backend sees)
-    fetch("/api/notes/get_myip")
-      .then(res => res.json())
-      .then(data => setUserIp(data.ip))
-      .catch(() => setUserIp(null));
-  }, [sortBy]);
+    fetchNotes();
+  }, [sortMode]);
 
-  async function fetchNotes() {
-    const res = await fetch(`/api/notes?sort=${sortBy}`);
+  async function fetchNotes(mode = sortMode) {
+    const res = await fetch(`/api/notes?sort=${mode}`);
     const data = await res.json();
     setNotes(data);
   }
@@ -89,19 +45,8 @@ export default function LoveWall() {
   }
 
   async function likeNote(id: string) {
-    setLikedId(id);
     await fetch("/api/notes", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    fetchNotes();
-    setTimeout(() => setLikedId(null), 500); // reset after animation
-  }
-
-  async function deleteNote(id: string) {
-    await fetch("/api/notes", {
-      method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
@@ -116,17 +61,16 @@ export default function LoveWall() {
   return (
     <div className="w-full max-w-xl mx-auto p-6 bg-pink-50 rounded-xl shadow-lg">
       <h2 className="text-3xl font-bold text-pink-600 mb-4 text-center">Virtual Love Wall</h2>
-      {/* Sort options */}
       <div className="flex justify-center gap-4 mb-4">
         <button
-          className={`px-3 py-1 rounded-full text-sm font-semibold border transition ${sortBy === 'recent' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-pink-500 border-pink-200 hover:bg-pink-100'}`}
-          onClick={() => setSortBy('recent')}
+          className={`px-4 py-1 rounded-full border transition text-sm font-semibold ${sortMode === 'recent' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-pink-500 border-pink-200 hover:bg-pink-100'}`}
+          onClick={() => setSortMode('recent')}
         >
           Recent
         </button>
         <button
-          className={`px-3 py-1 rounded-full text-sm font-semibold border transition ${sortBy === 'popular' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-pink-500 border-pink-200 hover:bg-pink-100'}`}
-          onClick={() => setSortBy('popular')}
+          className={`px-4 py-1 rounded-full border transition text-sm font-semibold ${sortMode === 'popular' ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-pink-500 border-pink-200 hover:bg-pink-100'}`}
+          onClick={() => setSortMode('popular')}
         >
           Popular
         </button>
@@ -176,57 +120,44 @@ export default function LoveWall() {
           <span className="text-xs text-pink-500">Preview (click to view)</span>
         </div>
       )}
-      {initialLoading ? (
-        <LoveWallPreloader />
-      ) : (
-        <ul className="space-y-4">
-          {notes.map(note => (
-            <li key={note.id} className="relative bg-white p-4 rounded shadow flex items-center gap-3 animate-heart-pop">
-              {note.imageUrl && (
-                <img
-                  src={note.imageUrl}
-                  alt="user upload"
-                  className="w-12 h-12 object-cover rounded-full border border-pink-200 cursor-pointer hover:scale-105 transition"
-                  onClick={() => {
-                    setModalImg(note.imageUrl!);
-                    setShowModal(true);
-                  }}
-                />
-              )}
-              <div className="flex-1">
-                <span className="text-lg break-words">{note.text}</span>
-                {note.createdAt && (
-                  <div className="text-xs text-gray-400 mt-1">
-                    {new Date(note.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true })}
-                  </div>
-                )}
-              </div>
-              <button
-                className={`ml-auto flex items-center gap-1 text-pink-500 hover:text-pink-700 transition ${likedId === note.id ? 'scale-110' : ''}`}
-                onClick={() => likeNote(note.id)}
-                aria-label="Like"
-                style={{ transition: 'transform 0.2s' }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="24" height="24" className={note.likes ? "animate-heart" : ""}>
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-                <span>{note.likes}</span>
-              </button>
-              {userIp && note.senderIp === userIp && (
-                <button
-                  className="ml-2 text-gray-400 hover:text-red-500 transition"
-                  title="Delete note"
-                  onClick={() => deleteNote(note.id)}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="space-y-4">
+        {notes.map(note => (
+          <li key={note.id} className="relative bg-white p-4 rounded shadow flex items-center gap-3 animate-heart-pop">
+            {note.imageUrl && (
+              <img
+                src={note.imageUrl}
+                alt="user upload"
+                className="w-12 h-12 object-cover rounded-full border border-pink-200 cursor-pointer hover:scale-105 transition"
+                onClick={() => {
+                  setModalImg(note.imageUrl!);
+                  setShowModal(true);
+                }}
+              />
+            )}
+            <div className="flex flex-col flex-1">
+              <span className="text-lg break-words">{note.text}</span>
+              <span className="text-xs text-gray-400 mt-1">
+                {note.createdAt ?
+                  new Date(note.createdAt).toLocaleString('en-IN', {
+                    timeZone: 'Asia/Kolkata',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+                    day: '2-digit', month: 'short', year: 'numeric'
+                  }) : ''}
+              </span>
+            </div>
+            <button
+              className="ml-auto flex items-center gap-1 text-pink-500 hover:text-pink-700 transition"
+              onClick={() => likeNote(note.id)}
+              aria-label="Like"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="24" height="24" className={note.likes ? "animate-heart" : ""}>
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              </svg>
+              <span>{note.likes}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
       {showModal && modalImg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60" onClick={() => setShowModal(false)}>
           <div className="bg-white rounded-lg p-4 max-w-full max-h-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
