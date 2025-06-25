@@ -1,4 +1,3 @@
-import Image from "next/image";
 import LoveWall from "./components/LoveWall";
 
 export default function Home() {

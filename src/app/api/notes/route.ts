@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   if (!text || typeof text !== "string" || !text.trim()) {
     return NextResponse.json({ error: "Invalid note" }, { status: 400 });
   }
-  const note: any = { text, likes: 0 };
+  const note: { text: string; likes: number; imageUrl?: string } = { text, likes: 0 };
   if (imageUrl && typeof imageUrl === "string" && imageUrl.trim()) {
     note.imageUrl = imageUrl.trim();
   }
