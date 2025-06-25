@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import html2canvas from "html2canvas";
+import Image from "next/image";
 
 interface Note {
   id: string;
@@ -69,18 +70,6 @@ async function cacheImageAsBase64(url: string): Promise<string | null> {
   }
 }
 
-
-function getCachedImageBase64(url: string): string | null {
-  const name = `loveWallImg_${btoa(url)}=`;
-  const cookies = document.cookie.split('; ');
-  for (const c of cookies) {
-    if (c.startsWith(name)) {
-      return decodeURIComponent(c.substring(name.length));
-    }
-  }
-  return null;
-}
-
 export default function LoveWall() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [input, setInput] = useState("");
@@ -93,6 +82,12 @@ export default function LoveWall() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [likedId, setLikedId] = useState<string | null>(null);
 
+  const fetchNotes = useCallback(async () => {
+    const res = await fetch(`/api/notes?sort=${sortBy}`);
+    const data = await res.json();
+    setNotes(data);
+  }, [sortBy]);
+
   useEffect(() => {
     setInitialLoading(true);
     fetchNotes().then(() => setInitialLoading(false));
@@ -101,13 +96,7 @@ export default function LoveWall() {
       .then(res => res.json())
       .then(data => setUserIp(data.ip))
       .catch(() => setUserIp(null));
-  }, [sortBy]);
-
-  async function fetchNotes() {
-    const res = await fetch(`/api/notes?sort=${sortBy}`);
-    const data = await res.json();
-    setNotes(data);
-  }
+  }, [fetchNotes]);
 
   async function addNote() {
     if (input.trim() === "") return;
@@ -125,11 +114,12 @@ export default function LoveWall() {
     setLoading(false);
   }
 
-  function userLiked(note: any) {
+  // 1. Use the Note type instead of any
+  function userLiked(note: Note) {
     return userIp && note.likedBy && Array.isArray(note.likedBy) && note.likedBy.includes(userIp);
   }
 
-  async function toggleLike(note: any) {
+  async function toggleLike(note: Note) {
     setLikedId(note.id);
     await fetch("/api/notes", {
       method: "PATCH",
@@ -300,14 +290,17 @@ export default function LoveWall() {
       {/* In the preview, do not show the image if it's a URL (only show if it's a base64 string) */}
       {imageUrl && imageUrl.startsWith('data:') && (
         <div className="mb-4 flex items-center gap-2">
-          <img
+          <Image
             src={imageUrl}
             alt="preview"
+            width={48}
+            height={48}
             className="w-12 h-12 object-cover rounded-full border border-pink-200 cursor-pointer hover:scale-105 transition"
             onClick={() => {
               setModalImg(imageUrl);
               setShowModal(true);
             }}
+            unoptimized
           />
           <span className="text-xs text-pink-500">Preview (click to view)</span>
         </div>
@@ -318,15 +311,18 @@ export default function LoveWall() {
         <ul className="space-y-4">
           {notes.map(note => (
             <li key={note.id} id={`note-share-${note.id}`} className="relative bg-white p-4 rounded shadow flex items-center gap-3 animate-heart-pop">
-              {note.imageUrl && (
-                <img
+              {note.imageUrl && note.imageUrl.startsWith('data:') && (
+                <Image
                   src={note.imageUrl}
                   alt="user upload"
+                  width={48}
+                  height={48}
                   className="w-12 h-12 object-cover rounded-full border border-pink-200 cursor-pointer hover:scale-105 transition"
                   onClick={() => {
                     setModalImg(note.imageUrl!);
                     setShowModal(true);
                   }}
+                  unoptimized
                 />
               )}
               <div className="flex-1">
@@ -381,7 +377,14 @@ export default function LoveWall() {
       {showModal && modalImg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60" onClick={() => setShowModal(false)}>
           <div className="bg-white rounded-lg p-4 max-w-full max-h-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
-            <img src={modalImg} alt="full" className="max-w-[90vw] max-h-[80vh] rounded" />
+            <Image
+              src={modalImg}
+              alt="full"
+              width={600}
+              height={400}
+              className="max-w-[90vw] max-h-[80vh] rounded"
+              unoptimized
+            />
             <button className="mt-4 px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600" onClick={() => setShowModal(false)}>Close</button>
           </div>
         </div>
