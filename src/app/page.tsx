@@ -14,13 +14,6 @@ export default function Home() {
         spreads positivity!
       </p>
       <LoveWall />
-      <footer className="mt-12 text-center text-pink-500 text-sm opacity-80">
-        Made with{" "}
-        <span className="inline-block animate-pulse" aria-label="heart">
-          ❤️
-        </span>{" "}
-        by Aadhu
-      </footer>
     </div>
   );
 }
