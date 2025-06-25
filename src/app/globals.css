@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8c9e4; /* light pink */
+  --foreground: #171717; /* always black text */
+  --accent: #fff;
+  --accent-strong: #f9a8d4;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #55002c; /* strong pink for dark */
+    --foreground: #171717; /* black text in dark mode */
+    --accent: #181024;
+    --accent-strong: #a21caf;
+  }
+}
+
+body {
+  background: var(--background) !important;
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
