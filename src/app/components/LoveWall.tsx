@@ -196,10 +196,12 @@ export default function LoveWall() {
     clone.style.display = 'block';
 
     Array.from(clone.querySelectorAll('button')).forEach(btn => btn.remove());
+    // Remove all images from the clone (removes both url and base64 images)
     Array.from(clone.querySelectorAll('img')).forEach(img => img.remove());
 
     wrapper.appendChild(clone);
 
+    // Only add the image if it's a base64 image (not a URL)
     if (note && note.imageUrl && note.imageUrl.startsWith('data:')) {
       const img = document.createElement('img');
       img.src = note.imageUrl;
