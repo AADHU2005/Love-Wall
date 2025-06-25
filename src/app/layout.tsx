@@ -35,6 +35,18 @@ export default function RootLayout({
       >
         <ThemeSwitch />
         {children}
+        <footer className="mt-12 text-center text-pink-500 text-sm opacity-80">
+          Made with{" "}
+          <span className="inline-block animate-pulse">❤️</span> by{" "}
+          <a
+            href="https://www.instagram.com/aadarsh.kalappurackal/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-pink-700"
+          >
+            Aadhu
+          </a>
+        </footer>
       </body>
     </html>
   );
