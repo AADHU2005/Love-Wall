@@ -5,12 +5,12 @@ function setThemeVars(isDark: boolean) {
   const root = document.documentElement;
   if (isDark) {
     root.style.setProperty("--background", "#55002c");
-    root.style.setProperty("--foreground", "#171717"); 
+    root.style.setProperty("--foreground", "#171717"); // always black text
     root.style.setProperty("--accent", "#181024");
     root.style.setProperty("--accent-strong", "#a21caf");
   } else {
     root.style.setProperty("--background", "#f8c9e4");
-    root.style.setProperty("--foreground", "#171717"); 
+    root.style.setProperty("--foreground", "#171717"); // always black text
     root.style.setProperty("--accent", "#fff");
     root.style.setProperty("--accent-strong", "#f9a8d4");
   }
@@ -20,6 +20,7 @@ function setThemeVars(isDark: boolean) {
 export default function ThemeSwitch() {
   const [dark, setDark] = useState(false);
 
+  // Sync theme on mount and when localStorage changes
   useEffect(() => {
     const updateTheme = () => {
       const stored = localStorage.getItem("theme");

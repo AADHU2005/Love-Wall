@@ -44,7 +44,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1200); 
+    const timer = setTimeout(() => setLoading(false), 1200); // 1.2s preloader
     return () => clearTimeout(timer);
   }, []);
 

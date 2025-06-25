@@ -1,7 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
-import html2canvas from "html2canvas";
-import Image from "next/image";
+import React, { useState, useEffect } from "react";
 
 interface Note {
   id: string;
@@ -46,30 +44,6 @@ function LoveWallPreloader() {
   );
 }
 
-
-async function cacheImageAsBase64(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, { mode: 'cors' });
-    if (!res.ok) throw new Error('Image fetch failed');
-    const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          document.cookie = `loveWallImg_${btoa(url)}=${encodeURIComponent(reader.result)}; max-age=86400; path=/`;
-          resolve(reader.result);
-        } else {
-          reject('Failed to read image');
-        }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
-
 export default function LoveWall() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [input, setInput] = useState("");
@@ -82,21 +56,21 @@ export default function LoveWall() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [likedId, setLikedId] = useState<string | null>(null);
 
-  const fetchNotes = useCallback(async () => {
-    const res = await fetch(`/api/notes?sort=${sortBy}`);
-    const data = await res.json();
-    setNotes(data);
-  }, [sortBy]);
-
   useEffect(() => {
     setInitialLoading(true);
     fetchNotes().then(() => setInitialLoading(false));
-
+    // Fetch user's IP from backend (so it matches what backend sees)
     fetch("/api/notes/get_myip")
       .then(res => res.json())
       .then(data => setUserIp(data.ip))
       .catch(() => setUserIp(null));
-  }, [fetchNotes]);
+  }, [sortBy]);
+
+  async function fetchNotes() {
+    const res = await fetch(`/api/notes?sort=${sortBy}`);
+    const data = await res.json();
+    setNotes(data);
+  }
 
   async function addNote() {
     if (input.trim() === "") return;
@@ -114,20 +88,15 @@ export default function LoveWall() {
     setLoading(false);
   }
 
-  // 1. Use the Note type instead of any
-  function userLiked(note: Note) {
-    return userIp && note.likedBy && Array.isArray(note.likedBy) && note.likedBy.includes(userIp);
-  }
-
-  async function toggleLike(note: Note) {
-    setLikedId(note.id);
+  async function likeNote(id: string) {
+    setLikedId(id);
     await fetch("/api/notes", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: note.id }),
+      body: JSON.stringify({ id }),
     });
     fetchNotes();
-    setTimeout(() => setLikedId(null), 500);
+    setTimeout(() => setLikedId(null), 500); // reset after animation
   }
 
   async function deleteNote(id: string) {
@@ -141,101 +110,7 @@ export default function LoveWall() {
 
   function handleImageIconClick() {
     const url = window.prompt("Enter image URL (optional):", imageUrl);
-    if (url !== null && url.trim()) {
-
-      cacheImageAsBase64(url.trim()).then(base64 => {
-        if (base64) {
-          setImageUrl(url.trim());
-        } else {
-          alert('Could not load image. Please check the URL or try a different image.');
-          setImageUrl("");
-        }
-      });
-    } else if (url !== null) {
-      setImageUrl("");
-    }
-  }
-
-
-  async function handleShareAsImage(noteId: string) {
-    const el = document.getElementById(`note-share-${noteId}`);
-    if (!el) return;
-
-    const note = notes.find(n => n.id === noteId);
-
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'relative';
-    wrapper.style.display = 'inline-block';
-    wrapper.style.padding = '32px';
-    wrapper.style.background = 'linear-gradient(135deg, #ffe4ec 0%, #fbc2eb 100%)';
-    wrapper.style.borderRadius = '24px';
-    wrapper.style.boxShadow = '0 4px 24px 0 rgba(245, 114, 182, 0.12)';
-    wrapper.style.textAlign = 'center';
-    wrapper.style.width = '384px';
-    wrapper.style.maxWidth = '90vw';
-
-    const clone = el.cloneNode(true) as HTMLElement;
-    clone.style.background = 'rgba(255,255,255,0.95)';
-    clone.style.borderRadius = '16px';
-    clone.style.boxShadow = '0 2px 8px 0 rgba(245, 114, 182, 0.10)';
-    clone.style.padding = '24px';
-    clone.style.margin = '0 auto';
-    clone.style.width = '320px';
-    clone.style.maxWidth = '320px';
-    clone.style.minHeight = '120px';
-    clone.style.display = 'block';
-
-    Array.from(clone.querySelectorAll('button')).forEach(btn => btn.remove());
-    // Remove all images from the clone (removes both url and base64 images)
-    Array.from(clone.querySelectorAll('img')).forEach(img => img.remove());
-
-    wrapper.appendChild(clone);
-
-    // Only add the image if it's a base64 image (not a URL)
-    if (note && note.imageUrl && note.imageUrl.startsWith('data:')) {
-      const img = document.createElement('img');
-      img.src = note.imageUrl;
-      img.alt = 'user upload';
-      img.style.width = '90%';
-      img.style.maxWidth = '280px';
-      img.style.height = 'auto';
-      img.style.objectFit = 'contain';
-      img.style.marginTop = '16px';
-      img.style.borderRadius = '12px';
-      img.style.boxShadow = '0 2px 8px 0 rgba(245, 114, 182, 0.10)';
-      wrapper.appendChild(img);
-    }
-
-    const watermark = document.createElement('div');
-    watermark.innerText = '♥ Love Wall';
-    watermark.style.position = 'absolute';
-    watermark.style.bottom = '12px';
-    watermark.style.right = '24px';
-    watermark.style.fontSize = '1rem';
-    watermark.style.color = '#f472b6';
-    watermark.style.opacity = '0.7';
-    watermark.style.fontWeight = 'bold';
-    watermark.style.letterSpacing = '0.05em';
-    watermark.style.pointerEvents = 'none';
-
-    wrapper.appendChild(watermark);
-    document.body.appendChild(wrapper);
-
-    const canvas = await html2canvas(wrapper, { backgroundColor: null, scale: 2 });
-    const dataUrl = canvas.toDataURL('image/png');
-    document.body.removeChild(wrapper);
-
-    if (navigator.canShare && navigator.canShare({ files: [new File([dataUrl], 'note.png', { type: 'image/png' })] })) {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], 'note.png', { type: 'image/png' });
-      navigator.share({ files: [file], title: 'Love Wall Note', text: 'Check out this note from the Love Wall!' });
-    } else {
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = 'love-wall-note.png';
-      link.click();
-    }
+    if (url !== null) setImageUrl(url);
   }
 
   return (
@@ -287,20 +162,16 @@ export default function LoveWall() {
           {loading ? "Posting..." : "Post"}
         </button>
       </div>
-      {/* In the preview, do not show the image if it's a URL (only show if it's a base64 string) */}
-      {imageUrl && imageUrl.startsWith('data:') && (
+      {imageUrl && (
         <div className="mb-4 flex items-center gap-2">
-          <Image
+          <img
             src={imageUrl}
             alt="preview"
-            width={48}
-            height={48}
             className="w-12 h-12 object-cover rounded-full border border-pink-200 cursor-pointer hover:scale-105 transition"
             onClick={() => {
               setModalImg(imageUrl);
               setShowModal(true);
             }}
-            unoptimized
           />
           <span className="text-xs text-pink-500">Preview (click to view)</span>
         </div>
@@ -310,19 +181,16 @@ export default function LoveWall() {
       ) : (
         <ul className="space-y-4">
           {notes.map(note => (
-            <li key={note.id} id={`note-share-${note.id}`} className="relative bg-white p-4 rounded shadow flex items-center gap-3 animate-heart-pop">
-              {note.imageUrl && note.imageUrl.startsWith('data:') && (
-                <Image
+            <li key={note.id} className="relative bg-white p-4 rounded shadow flex items-center gap-3 animate-heart-pop">
+              {note.imageUrl && (
+                <img
                   src={note.imageUrl}
                   alt="user upload"
-                  width={48}
-                  height={48}
                   className="w-12 h-12 object-cover rounded-full border border-pink-200 cursor-pointer hover:scale-105 transition"
                   onClick={() => {
                     setModalImg(note.imageUrl!);
                     setShowModal(true);
                   }}
-                  unoptimized
                 />
               )}
               <div className="flex-1">
@@ -335,19 +203,13 @@ export default function LoveWall() {
               </div>
               <button
                 className={`ml-auto flex items-center gap-1 text-pink-500 hover:text-pink-700 transition ${likedId === note.id ? 'scale-110' : ''}`}
-                onClick={() => toggleLike(note)}
-                aria-label={userLiked(note) ? "Unlike" : "Like"}
+                onClick={() => likeNote(note.id)}
+                aria-label="Like"
                 style={{ transition: 'transform 0.2s' }}
               >
-                {userLiked(note) ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="24" height="24" className="animate-heart">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="24" height="24">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                  </svg>
-                )}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="24" height="24" className={note.likes ? "animate-heart" : ""}>
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
                 <span>{note.likes}</span>
               </button>
               {userIp && note.senderIp === userIp && (
@@ -361,15 +223,6 @@ export default function LoveWall() {
                   </svg>
                 </button>
               )}
-              <button
-                className="ml-2 text-pink-400 hover:text-pink-600 transition"
-                title="Share as Image"
-                onClick={() => handleShareAsImage(note.id)}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10.5l4.5-4.5 4.5 4.5M12 6v12" />
-                </svg>
-              </button>
             </li>
           ))}
         </ul>
@@ -377,14 +230,7 @@ export default function LoveWall() {
       {showModal && modalImg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60" onClick={() => setShowModal(false)}>
           <div className="bg-white rounded-lg p-4 max-w-full max-h-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
-            <Image
-              src={modalImg}
-              alt="full"
-              width={600}
-              height={400}
-              className="max-w-[90vw] max-h-[80vh] rounded"
-              unoptimized
-            />
+            <img src={modalImg} alt="full" className="max-w-[90vw] max-h-[80vh] rounded" />
             <button className="mt-4 px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600" onClick={() => setShowModal(false)}>Close</button>
           </div>
         </div>
