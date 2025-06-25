@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const client = await getClient();
   const db = client.db(dbName);
   const sortParam = req.nextUrl?.searchParams.get('sort');
-  let sort: any = { _id: -1 };
+  let sort: Record<string, 1 | -1> = { _id: -1 };
   if (sortParam === 'popular') {
     sort = { likes: -1, _id: -1 };
   }
