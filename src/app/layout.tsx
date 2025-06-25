@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ThemeSwitch from "./components/ThemeSwitch";
+import Head from "next/head";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,12 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Love Wall",
+  title: "Love Wall - Confess Your Love",
   description: "Share your love notes anonymously",
   icons: [
-    { rel: "icon", url: "/heart.ico" },
-    { rel: "shortcut icon", url: "/heart.ico" },
-    { rel: "apple-touch-icon", url: "/heart.ico" },
+    { rel: "icon", url: "/heart.png", type: "image/png" },
+    { rel: "apple-touch-icon", url: "/heart.png", type: "image/png" },
   ],
 };
 
@@ -30,6 +30,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <Head>
+        <link rel="icon" type="image/png" href="/heart.png" />
+        <link rel="apple-touch-icon" href="/heart.png" />
+      </Head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
