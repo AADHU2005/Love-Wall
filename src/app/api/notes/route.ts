@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MongoClient, ObjectId } from "mongodb";
+import { MongoClient, ObjectId, Collection, Document } from "mongodb";
 
 const uri = process.env.MONGODB_URI || "mongodb://localhost:27017";
 const dbName = process.env.MONGODB_DB || "love_wall";
@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const client = await getClient();
   const db = client.db(dbName);
+  const notesCollection: Collection<Document> = db.collection("notes");
 
   let userIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   if (!userIp) {
@@ -69,21 +70,26 @@ export async function PATCH(req: NextRequest) {
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-
-  const note = await db.collection("notes").findOne({ _id: new ObjectId(id), likedBy: userIp });
+  const note = await notesCollection.findOne({ _id: new ObjectId(id), likedBy: userIp });
   if (note) {
-    await (db.collection("notes") as any).updateOne(
+    await notesCollection.updateOne(
       { _id: new ObjectId(id) },
       { $inc: { likes: -1 }, $pull: { likedBy: userIp } }
     );
   } else {
-    await db.collection("notes").updateOne(
+    await notesCollection.updateOne(
       { _id: new ObjectId(id) },
       { $inc: { likes: 1 }, $addToSet: { likedBy: userIp } }
     );
   }
-  const updated = await db.collection("notes").findOne({ _id: new ObjectId(id) });
-  return NextResponse.json({ id, text: updated?.text, likes: updated?.likes, imageUrl: updated?.imageUrl, likedBy: updated?.likedBy });
+  const updated = await notesCollection.findOne({ _id: new ObjectId(id) });
+  return NextResponse.json({
+    id,
+    text: updated?.text,
+    likes: updated?.likes,
+    imageUrl: updated?.imageUrl,
+    likedBy: updated?.likedBy,
+  });
 }
 
 export async function DELETE(req: NextRequest) {
