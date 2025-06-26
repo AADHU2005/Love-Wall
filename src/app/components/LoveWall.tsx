@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import heic2any from "heic2any";
 
 interface Note {
   id: string;
@@ -18,6 +19,7 @@ export default function LoveWall() {
   const [showModal, setShowModal] = useState(false);
   const [sortMode, setSortMode] = useState<'recent' | 'popular'>('recent');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingImg, setUploadingImg] = useState(false);
 
   useEffect(() => {
     fetchNotes();
@@ -35,6 +37,7 @@ export default function LoveWall() {
     let finalImageUrl = imageUrl.trim();
     // If a file is selected, upload to Imgur now
     if (selectedFile) {
+      setUploadingImg(true);
       const formData = new FormData();
       formData.append('image', selectedFile);
       const res = await fetch('https://api.imgur.com/3/image', {
@@ -45,6 +48,7 @@ export default function LoveWall() {
         body: formData,
       });
       const data = await res.json();
+      setUploadingImg(false);
       if (data.success && data.data.link) {
         finalImageUrl = data.data.link;
       } else {
@@ -87,12 +91,32 @@ export default function LoveWall() {
       'image/gif',
       'video/mp4',
     ];
-    if (!allowedTypes.includes(file.type)) {
+    // Check MIME type or file extension for HEIC
+    const isHeic = file.name.toLowerCase().endsWith('.heic');
+    if (!allowedTypes.includes(file.type) && !(isHeic && (!file.type || file.type === 'application/octet-stream'))) {
       alert('Only PNG, JPG, JPEG, HEIC, GIF, or MP4 files are allowed.');
       return;
     }
-    setSelectedFile(file);
-    setImageUrl(URL.createObjectURL(file));
+    if (isHeic) {
+      try {
+        const converted = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.9,
+        });
+        // heic2any returns a Blob or an array of Blobs
+        const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+        const jpegFile = new File([jpegBlob], file.name.replace(/\.heic$/i, '.jpg'), { type: 'image/jpeg' });
+        setSelectedFile(jpegFile);
+        setImageUrl(URL.createObjectURL(jpegFile));
+      } catch (err) {
+        alert('Failed to convert HEIC image. Please use JPG/PNG.');
+        return;
+      }
+    } else {
+      setSelectedFile(file);
+      setImageUrl(URL.createObjectURL(file));
+    }
   }
 
   return (
@@ -147,53 +171,67 @@ export default function LoveWall() {
       </div>
       {imageUrl && selectedFile && (
         <div className="mb-4 flex items-center gap-2">
-          <img
-            src={imageUrl}
-            alt="preview"
-            className="w-12 h-12 object-cover rounded-full border border-pink-200 cursor-pointer hover:scale-105 transition"
-            onClick={() => {
-              setModalImg(imageUrl);
-              setShowModal(true);
-            }}
-          />
+          <div className="relative">
+            <img
+              src={imageUrl}
+              alt="preview"
+              className="w-12 h-12 object-cover rounded-full border border-pink-200 cursor-pointer hover:scale-105 transition"
+              onClick={() => {
+                setModalImg(imageUrl);
+                setShowModal(true);
+              }}
+            />
+            {uploadingImg && (
+              <span className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-full">
+                <svg className="animate-spin h-6 w-6 text-pink-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                </svg>
+              </span>
+            )}
+          </div>
           <span className="text-xs text-pink-500">Preview (click to view)</span>
         </div>
       )}
       <ul className="space-y-4">
         {notes.map(note => (
-          <li key={note.id} className="relative bg-white p-4 rounded shadow flex items-center gap-3 animate-heart-pop">
-            {note.imageUrl && (
-              <img
-                src={note.imageUrl}
-                alt="user upload"
-                className="w-12 h-12 object-cover rounded-full border border-pink-200 cursor-pointer hover:scale-105 transition"
-                onClick={() => {
-                  setModalImg(note.imageUrl!);
-                  setShowModal(true);
-                }}
-              />
-            )}
-            <div className="flex flex-col flex-1">
-              <span className="text-lg break-words">{note.text}</span>
-              <span className="text-xs text-gray-400 mt-1">
-                {note.createdAt ?
-                  new Date(note.createdAt).toLocaleString('en-IN', {
-                    timeZone: 'Asia/Kolkata',
-                    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-                    day: '2-digit', month: 'short', year: 'numeric'
-                  }) : ''}
-              </span>
+          <li key={note.id} className="relative bg-white p-4 rounded shadow flex flex-col gap-2 animate-heart-pop">
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col flex-1">
+                <span className="text-lg break-words">{note.text}</span>
+                <span className="text-xs text-gray-400 mt-1">
+                  {note.createdAt ?
+                    new Date(note.createdAt).toLocaleString('en-IN', {
+                      timeZone: 'Asia/Kolkata',
+                      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+                      day: '2-digit', month: 'short', year: 'numeric'
+                    }) : ''}
+                </span>
+              </div>
+              <button
+                className="ml-auto flex items-center gap-1 text-pink-500 hover:text-pink-700 transition"
+                onClick={() => likeNote(note.id)}
+                aria-label="Like"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="24" height="24" className={note.likes ? "animate-heart" : ""}>
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+                <span>{note.likes}</span>
+              </button>
             </div>
-            <button
-              className="ml-auto flex items-center gap-1 text-pink-500 hover:text-pink-700 transition"
-              onClick={() => likeNote(note.id)}
-              aria-label="Like"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="24" height="24" className={note.likes ? "animate-heart" : ""}>
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-              </svg>
-              <span>{note.likes}</span>
-            </button>
+            {note.imageUrl && (
+              <div className="mt-2 flex justify-center">
+                <img
+                  src={note.imageUrl}
+                  alt="user upload"
+                  className="max-h-64 rounded-lg border border-pink-200 object-contain cursor-pointer hover:scale-105 transition"
+                  onClick={() => {
+                    setModalImg(note.imageUrl!);
+                    setShowModal(true);
+                  }}
+                />
+              </div>
+            )}
           </li>
         ))}
       </ul>
