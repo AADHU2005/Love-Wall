@@ -17,6 +17,7 @@ export default function LoveWall() {
   const [modalImg, setModalImg] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [sortMode, setSortMode] = useState<'recent' | 'popular'>('recent');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchNotes();
@@ -31,14 +32,36 @@ export default function LoveWall() {
   async function addNote() {
     if (input.trim() === "") return;
     setLoading(true);
+    let finalImageUrl = imageUrl.trim();
+    // If a file is selected, upload to Imgur now
+    if (selectedFile) {
+      const formData = new FormData();
+      formData.append('image', selectedFile);
+      const res = await fetch('https://api.imgur.com/3/image', {
+        method: 'POST',
+        headers: {
+          Authorization: `Client-ID ${process.env.NEXT_PUBLIC_IMGUR_CLIENT_ID || process.env.IMGUR_CLIENT_ID}`,
+        },
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success && data.data.link) {
+        finalImageUrl = data.data.link;
+      } else {
+        alert('Image upload failed.');
+        setLoading(false);
+        return;
+      }
+    }
     const res = await fetch("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: input, imageUrl: imageUrl.trim() }),
+      body: JSON.stringify({ text: input, imageUrl: finalImageUrl }),
     });
     if (res.ok) {
       setInput("");
       setImageUrl("");
+      setSelectedFile(null);
       fetchNotes();
     }
     setLoading(false);
@@ -53,9 +76,23 @@ export default function LoveWall() {
     fetchNotes();
   }
 
-  function handleImageIconClick() {
-    const url = window.prompt("Enter image URL (optional):", imageUrl);
-    if (url !== null) setImageUrl(url);
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = [
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'image/heic',
+      'image/gif',
+      'video/mp4',
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Only PNG, JPG, JPEG, HEIC, GIF, or MP4 files are allowed.');
+      return;
+    }
+    setSelectedFile(file);
+    setImageUrl(URL.createObjectURL(file));
   }
 
   return (
@@ -85,19 +122,21 @@ export default function LoveWall() {
           onKeyDown={e => e.key === 'Enter' && addNote()}
           disabled={loading}
         />
-        <button
-          type="button"
-          className="p-2 bg-white border rounded hover:bg-pink-100 transition flex items-center justify-center"
-          title={imageUrl ? "Change image URL" : "Add image URL"}
-          onClick={handleImageIconClick}
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          id="imgur-upload"
+          onChange={handleFileChange}
           disabled={loading}
-        >
+        />
+        <label htmlFor="imgur-upload" className="p-2 bg-white border rounded hover:bg-pink-100 transition flex items-center justify-center cursor-pointer" title="Upload image" style={{ opacity: loading ? 0.5 : 1 }}>
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-pink-400">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5V7.5A2.25 2.25 0 015.25 5.25h13.5A2.25 2.25 0 0121 7.5v9a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 16.5z" />
             <circle cx="8.25" cy="8.25" r="1.25" fill="currentColor" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 16.5l-5.25-5.25a1.5 1.5 0 00-2.12 0l-5.13 5.13" />
           </svg>
-        </button>
+        </label>
         <button
           className="bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600 transition"
           onClick={addNote}
@@ -106,7 +145,7 @@ export default function LoveWall() {
           {loading ? "Posting..." : "Post"}
         </button>
       </div>
-      {imageUrl && (
+      {imageUrl && selectedFile && (
         <div className="mb-4 flex items-center gap-2">
           <img
             src={imageUrl}
