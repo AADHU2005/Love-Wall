@@ -59,7 +59,7 @@ export default function LoveWall() {
   }
 
   return (
-    <div className="w-full max-w-xl mx-auto p-6 bg-pink-50 rounded-xl shadow-lg">
+    <div className="w-full max-w-xl mx-auto p-6 bg-white rounded-xl shadow-lg">
       <h2 className="text-3xl font-bold text-pink-600 mb-4 text-center">Virtual Love Wall</h2>
       <div className="flex justify-center gap-4 mb-4">
         <button
