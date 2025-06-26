@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import heic2any from "heic2any";
+import Image from "next/image";
 
 interface Note {
   id: string;
@@ -23,6 +24,7 @@ export default function LoveWall() {
 
   useEffect(() => {
     fetchNotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortMode]);
 
   async function fetchNotes(mode = sortMode) {
@@ -109,7 +111,7 @@ export default function LoveWall() {
         const jpegFile = new File([jpegBlob], file.name.replace(/\.heic$/i, '.jpg'), { type: 'image/jpeg' });
         setSelectedFile(jpegFile);
         setImageUrl(URL.createObjectURL(jpegFile));
-      } catch (err) {
+      } catch {
         alert('Failed to convert HEIC image. Please use JPG/PNG.');
         return;
       }
@@ -172,9 +174,11 @@ export default function LoveWall() {
       {imageUrl && selectedFile && (
         <div className="mb-4 flex items-center gap-2">
           <div className="relative">
-            <img
+            <Image
               src={imageUrl}
               alt="preview"
+              width={48}
+              height={48}
               className="w-12 h-12 object-cover rounded-full border border-pink-200 cursor-pointer hover:scale-105 transition"
               onClick={() => {
                 setModalImg(imageUrl);
@@ -221,9 +225,11 @@ export default function LoveWall() {
             </div>
             {note.imageUrl && (
               <div className="mt-2 flex justify-center">
-                <img
+                <Image
                   src={note.imageUrl}
                   alt="user upload"
+                  width={400}
+                  height={400}
                   className="max-h-64 rounded-lg border border-pink-200 object-contain cursor-pointer hover:scale-105 transition"
                   onClick={() => {
                     setModalImg(note.imageUrl!);
@@ -238,7 +244,7 @@ export default function LoveWall() {
       {showModal && modalImg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60" onClick={() => setShowModal(false)}>
           <div className="bg-white rounded-lg p-4 max-w-full max-h-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
-            <img src={modalImg} alt="full" className="max-w-[90vw] max-h-[80vh] rounded" />
+            <Image src={modalImg} alt="full" width={800} height={800} className="max-w-[90vw] max-h-[80vh] rounded" />
             <button className="mt-4 px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600" onClick={() => setShowModal(false)}>Close</button>
           </div>
         </div>
