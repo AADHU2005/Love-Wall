@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import heic2any from "heic2any";
 import Image from "next/image";
 
 interface Note {
@@ -101,9 +100,10 @@ export default function LoveWall() {
     }
     if (isHeic) {
       try {
+        const heic2any = (await import("heic2any")).default;
         const converted = await heic2any({
           blob: file,
-          toType: 'image/jpeg',
+          toType: "image/jpeg",
           quality: 0.9,
         });
         // heic2any returns a Blob or an array of Blobs
