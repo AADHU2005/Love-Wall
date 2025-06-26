@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ThemeSwitch from "./components/ThemeSwitch";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,9 +16,9 @@ export const metadata: Metadata = {
   title: "Love Wall",
   description: "Share your love notes anonymously",
   icons: [
-    { rel: "icon", url: "/heart.ico" },
-    { rel: "shortcut icon", url: "/heart.ico" },
-    { rel: "apple-touch-icon", url: "/heart.ico" },
+    { rel: "icon", url: "/heart.png", type: "image/png" },
+    { rel: "shortcut icon", url: "/heart.png", type: "image/png" },
+    { rel: "apple-touch-icon", url: "/heart.png", type: "image/png" },
   ],
 };
 
@@ -33,7 +32,6 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeSwitch />
         {children}
         <footer className="mt-12 text-center text-pink-500 text-sm opacity-80">
           Made with{" "}
