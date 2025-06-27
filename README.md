@@ -1,6 +1,6 @@
 # Love Wall
 
-This is a creative interactive website themed around Love, featuring a Virtual Love Wall where users can post anonymous notes and see animated hearts.
+This is a creative interactive website themed around Love, featuring a Virtual Love Wall where users can post anonymous notes.
 
 ## Features
 - Post anonymous love notes
